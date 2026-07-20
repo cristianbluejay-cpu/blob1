@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { margin: 0; overflow: hidden; background: #e0f7fa; font-family: sans-serif; }
+        #ui { position: absolute; top: 10px; left: 10px; background: white; padding: 15px; border-radius: 8px; z-index: 300; max-width: 240px; }
+        #ui p { margin: 4px 0; font-size: 13px; }
+        #connStatus { font-size: 12px; color: #555; margin-top: 6px; min-height: 16px; }
+        #mobileToggle { position: absolute; top: 10px; right: 10px; padding: 10px; cursor: pointer; background: #ff9800; border: none; border-radius: 5px; color: white; font-weight: bold; z-index: 300; }
+
+        #startScreen { position: absolute; inset: 0; background: rgba(224,247,250,0.97); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow-y: auto; }
+        #startScreen h1 { margin-bottom: 4px; }
+        #startScreen .menuBtn { font-size: 18px; padding: 14px 28px; margin: 8px; border: none; border-radius: 8px; cursor: pointer; background: #007bff; color: white; font-weight: bold; }
+        #startScreen .menuBtn.secondary { background: #42a5f5; }
+        #startScreen .menuBtn.avatar { background: #ab47bc; }
+        #publicRow { display: flex; gap: 10px; margin-top: 6px; }
+        #publicRow button { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; background: #26a69a; color: white; font-weight: bold; }
+        #menuStatus { font-size: 13px; color: #444; margin-top: 10px; min-height: 18px; }
+        .menuInput { width: 240px; padding: 6px; margin-top: 6px; }
+
+        #tutorialHint { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); color: white; padding: 10px 18px; border-radius: 8px; z-index: 150; display: none; text-align: center; font-size: 14px; }
+        #tutorialStartBtn { display: none; margin-top: 8px; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; background: #4caf50; color: white; font-weight: bold; }
+
+        #joystick-area { position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; border-radius: 50%; background: #2c3e50; border: 4px solid #1a252f; display: none; touch-action: none; align-items: center; justify-content: center; z-index: 100; }
+        #joystick-thumb { width: 60px; height: 60px; border-radius: 50%; background: #007bff; border: 4px solid #0056b3; }
+
+        .btn-container { position: absolute; bottom: 20px; right: 20px; display: none; gap: 15px; z-index: 100; flex-wrap: wrap; justify-content: flex-end; max-width: 220px; }
+        .ability { width: 90px; height: 90px; border: 4px solid #333; background: #fff; cursor: pointer; border-radius: 10px; font-weight: bold; }
+
+        /* Leaderboard */
+        #leaderboard { position: absolute; top: 60px; right: 20px; width: 260px; background: #2b2b2b; border-radius: 10px; color: #eee; z-index: 250; display: none; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+        #leaderboard .lbTop { position: relative; padding: 12px 14px 10px 34px; border-bottom: 1px solid #444; }
+        #leaderboard .lbClose { position: absolute; top: 8px; left: 10px; cursor: pointer; color: #ccc; font-size: 16px; line-height: 1; background: none; border: none; }
+        #leaderboard .lbHeaderRow { display: flex; justify-content: space-between; font-size: 12px; color: #999; }
+        .lbRow { display: flex; justify-content: space-between; padding: 9px 14px; border-bottom: 1px solid #3a3a3a; font-size: 14px; }
+        .lbRow.leader { box-shadow: inset 0 0 0 2px #ffd54f; background: rgba(255,213,79,0.08); }
+
+        #matchTimer { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 6px 16px; border-radius: 20px; font-weight: bold; z-index: 150; display: none; }
+
+        /* Winner + booster pack overlays */
+        #winnerScreen, #packScreen, #avatarScreen, #gameModeScreen { position: absolute; inset: 0; background: rgba(0,0,0,0.75); z-index: 400; display: none; align-items: center; justify-content: center; flex-direction: column; color: white; text-align: center; }
+        #winnerScreen .card, #packScreen .card, #avatarScreen .card, #gameModeScreen .card { background: #263238; padding: 26px 34px; border-radius: 14px; max-width: 90vw; }
+        #winnerScreen h2 { margin-top: 0; }
+        .bigBtn { font-size: 16px; padding: 12px 22px; margin: 8px; border: none; border-radius: 8px; cursor: pointer; background: #4caf50; color: white; font-weight: bold; }
+        .bigBtn.secondary { background: #607d8b; }
+
+        /* Booster pack card visual (original design, not copied from any game) */
+        #packCard { width: 140px; height: 190px; margin: 14px auto; border-radius: 12px; background: repeating-linear-gradient(135deg, #ffd54f, #ffd54f 14px, #ffca28 14px, #ffca28 28px); border: 4px solid #f9a825; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.4); transition: transform 0.15s; }
+        #packCard:hover { transform: scale(1.04); }
+        #packCard .star { font-size: 48px; }
+        #packReveal { display: none; }
+        #packReveal .itemPreview { width: 90px; height: 90px; margin: 10px auto; }
+
+        /* Avatar screen */
+        #cosmeticGrid { display: grid; grid-template-columns: repeat(4, 64px); gap: 10px; margin: 14px 0; max-height: 220px; overflow-y: auto; padding: 4px; }
+        .cosmeticItem { width: 64px; height: 64px; border-radius: 8px; background: #37474f; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid transparent; position: relative; }
+        .cosmeticItem.locked { opacity: 0.35; cursor: not-allowed; }
+        .cosmeticItem.equipped { border-color: #4caf50; }
+        .cosmeticItem .swatch { width: 30px; height: 30px; border-radius: 50%; }
+
+        #gameModeScreen .modeGrid { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 480px; }
+        .modeCard { width: 170px; padding: 16px; border-radius: 10px; background: #37474f; cursor: pointer; border: 2px solid transparent; text-align: left; }
+        .modeCard:hover { background: #455a64; }
+        .modeCard.selected { border-color: #4caf50; }
+        .modeCard h3 { margin: 0 0 6px 0; }
+        .modeCard p { margin: 0; font-size: 12px; color: #cfd8dc; }
+    </style>
+</head>
+<body>
+    <button id="mobileToggle" onclick="toggleMobile()">Mobile Friendly: OFF</button>
+    <div id="ui">
+        <p>My ID: <span id="myId">Connecting...</span> <button onclick="createFreshPeer()" style="font-size:11px; padding:2px 6px; cursor:pointer;">Retry</button></p>
+        <input id="targetId" placeholder="Friend ID"> <button onclick="connectToFriend()">Connect</button><br>
+        <input id="chatInput" placeholder="Message..."> <button onclick="sendChat()">Send</button>
+        <div id="connStatus"></div>
+    </div>
+
+    <!-- Start / menu screen -->
+    <div id="startScreen">
+        <h1>Blob Arena</h1>
+        <p>Move with WASD/arrows or the joystick. Use your abilities. Team up with friends!</p>
+        <input id="displayName" class="menuInput" placeholder="Your name">
+        <div>
+            <button class="menuBtn" onclick="startTutorial()">Tutorial</button>
+            <button class="menuBtn secondary" onclick="enterGame()">Start Game</button>
+            <button class="menuBtn avatar" onclick="openAvatarScreen()">Avatar</button>
+            <button class="menuBtn gamemode" onclick="openGameModeScreen()">Game Modes</button>
+        </div>
+        <p id="selectedModeLabel" style="font-size:13px; color:#444;">Mode: Arena (parries)</p>
+        <p style="margin-top:18px; margin-bottom:4px;">Or join your hosted server:</p>
+        <input id="serverUrl" class="menuInput" placeholder="wss://your-server.up.railway.app">
+        <input id="roomName" class="menuInput" placeholder="Room name (e.g. squad-1)">
+        <button onclick="joinTypedRoom()" style="padding:8px 14px; border:none; border-radius:6px; cursor:pointer; background:#26a69a; color:white; font-weight:bold; margin-top:6px;">Join / Create Room</button>
+        <p style="margin-top:10px; margin-bottom:4px; font-size:13px;">Or a quick default room:</p>
+        <div id="publicRow">
+            <button onclick="joinHostedServer('room-1')">Room 1</button>
+            <button onclick="joinHostedServer('room-2')">Room 2</button>
+            <button onclick="joinHostedServer('room-3')">Room 3</button>
+        </div>
+        <p style="margin-top:10px; margin-bottom:4px; font-size:13px;">Or join a specific friend by their ID:</p>
+        <input id="friendServerId" class="menuInput" placeholder="Friend's server ID (e.g. p7)">
+        <button onclick="joinFriendById()" style="padding:8px 14px; border:none; border-radius:6px; cursor:pointer; background:#5c6bc0; color:white; font-weight:bold; margin-top:6px;">Join Friend</button>
+        <div id="menuStatus"></div>
+    </div>
+
+    <div id="tutorialHint">
+        Use WASD or the joystick to walk over to the orange bot!
+        <br><button id="tutorialStartBtn" onclick="enterGame()">Start Game</button>
+    </div>
+
+    <div id="joystick-area"><div id="joystick-thumb"></div></div>
+
+    <div class="btn-container" id="abilityGroup">
+        <button class="ability" onclick="use('q')">Shield</button>
+        <button class="ability" onclick="use('e')">Explode</button>
+        <button class="ability" onclick="use('p')">Parry</button>
+        <button class="ability" onclick="dash()">Dash</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Leaderboard (Tab to toggle, X to close) -->
+    <div id="leaderboard">
+        <div class="lbTop">
+            <button class="lbClose" onclick="toggleLeaderboard(false)">&times;</button>
+            <div class="lbHeaderRow"><span>People</span><span id="lbScoreLabel">Parries</span></div>
+        </div>
+        <div id="leaderboardRows"></div>
+    </div>
+
+    <div id="matchTimer">2:00</div>
+
+    <!-- Winner announcement -->
+    <div id="winnerScreen">
+        <div class="card">
+            <h2 id="winnerTitle">Time's up!</h2>
+            <p id="winnerSubtitle"></p>
+            <div>
+                <button class="bigBtn" id="openPackBtn" style="display:none;" onclick="startPackOpen()">Open Booster Pack</button>
+                <button class="bigBtn secondary" onclick="rematch()">Play Again</button>
+                <button class="bigBtn secondary" onclick="backToMenu()">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booster pack opening -->
+    <div id="packScreen">
+        <div class="card">
+            <h2>Booster Pack!</h2>
+            <div id="packCard" onclick="revealPack()"><span class="star">&#9733;</span></div>
+            <p>Tap the pack to open it</p>
+            <div id="packReveal">
+                <div class="itemPreview" id="packItemPreview"></div>
+                <p id="packItemName" style="font-weight:bold; font-size:18px;"></p>
+                <p id="packItemRarity"></p>
+                <button class="bigBtn" onclick="closePackScreen()">Nice!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Avatar customization -->
+    <div id="avatarScreen">
+        <div class="card">
+            <h2>Customize Your Blob</h2>
+            <canvas id="avatarPreview" width="160" height="140"></canvas>
+            <p style="font-size:13px; color:#bbb;">Colors</p>
+            <div id="colorGrid" style="display:grid; grid-template-columns: repeat(4,64px); gap:10px; justify-content:center;"></div>
+            <p style="font-size:13px; color:#bbb;">Hats</p>
+            <div id="hatGrid" style="display:grid; grid-template-columns: repeat(4,64px); gap:10px; justify-content:center;"></div>
+            <div>
+                <button class="bigBtn secondary" onclick="closeAvatarScreen()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game mode selection -->
+    <div id="gameModeScreen">
+        <div class="card">
+            <h2>Choose a Game Mode</h2>
+            <div class="modeGrid">
+                <div class="modeCard" id="modeCard_arena" onclick="selectGameMode('arena')">
+                    <h3>Arena</h3>
+                    <p>Free-for-all. Most parries when the 2-minute timer ends wins.</p>
+                </div>
+                <div class="modeCard" id="modeCard_soccer" onclick="selectGameMode('soccer')">
+                    <h3>Soccer</h3>
+                    <p>The map becomes a field with two nets. Push the ball in — most goals in 2 minutes wins.</p>
+                </div>
+                <div class="modeCard" id="modeCard_hideseek" onclick="selectGameMode('hideseek')">
+                    <h3>Hide &amp; Seek</h3>
+                    <p>One random player becomes the Seeker with a heavily shortened view. Find everyone in 2 minutes, or survive as a Hider.</p>
+                </div>
+            </div>
+            <div>
+                <button class="bigBtn secondary" onclick="closeGameModeScreen()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // If the primary CDN is blocked/unreachable, try a second one before giving up on direct connect.
+        function loadPeerJsFallback() {
+            if (typeof Peer !== 'undefined') return;
+            console.warn('PeerJS failed to load from unpkg, trying jsdelivr fallback...');
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+            s.onload = () => { if (typeof createFreshPeer === 'function') createFreshPeer(); };
+            s.onerror = () => {
+                const el = document.getElementById('myId');
+                if (el) el.textContent = 'unavailable';
+            };
+            document.head.appendChild(s);
+        }
+    </script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" onerror="loadPeerJsFallback()"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        let me = { x: 400, y: 400, vx: 0, vy: 0, msg: "", msgTime: 0, shieldTime: 0, explodeTime: 0, parryFlash: 0, parries: 0, flinchTime: 0, slowTime: 0, goals: 0, catches: 0 };
+        let keys = {}, isMobile = false;
+
+        // gameState: 'menu' -> start screen showing | 'tutorial' -> practice with bot | 'game' -> real play | 'ended' -> match over
+        let gameState = 'menu';
+
+        function toggleMobile() {
+            isMobile = !isMobile;
+            document.getElementById('mobileToggle').textContent = "Mobile Friendly: " + (isMobile ? "ON" : "OFF");
+            document.getElementById('abilityGroup').style.display = isMobile ? "flex" : "none";
+            document.getElementById('joystick-area').style.display = isMobile ? "flex" : "none";
+        }
+
+        // ================= COSMETICS / PROFILE (persisted in localStorage) =================
+        const COSMETIC_CATALOG = [
+            { id: 'color_blue',   type: 'color', value: '#2196f3', name: 'Blue',    rarity: 'common', isDefault: true },
+            { id: 'color_green',  type: 'color', value: '#43a047', name: 'Green',   rarity: 'common' },
+            { id: 'color_red',    type: 'color', value: '#e53935', name: 'Red',     rarity: 'common' },
+            { id: 'color_purple', type: 'color', value: '#8e24aa', name: 'Purple',  rarity: 'rare' },
+            { id: 'color_black',  type: 'color', value: '#333333', name: 'Shadow',  rarity: 'epic' },
+            { id: 'color_gold',   type: 'color', value: '#ffb300', name: 'Gold',    rarity: 'legendary' },
+            { id: 'hat_none',   type: 'hat', value: 'none',   name: 'No Hat',   rarity: 'common', isDefault: true },
+            { id: 'hat_party',  type: 'hat', value: 'party',  name: 'Party Hat', rarity: 'common' },
+            { id: 'hat_halo',   type: 'hat', value: 'halo',   name: 'Halo',     rarity: 'rare' },
+            { id: 'hat_tophat', type: 'hat', value: 'tophat', name: 'Top Hat',  rarity: 'epic' },
+            { id: 'hat_crown',  type: 'hat', value: 'crown',  name: 'Crown',    rarity: 'legendary' },
+        ];
+        const RARITY_COLORS = { common: '#9e9e9e', rare: '#42a5f5', epic: '#ab47bc', legendary: '#ffb300' };
+
+        function loadProfile() {
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem('blobArenaProfile')); } catch (e) {}
+            if (!saved || !saved.unlocked) {
+                saved = { unlocked: ['color_blue', 'hat_none'], equipped: { color: '#2196f3', hat: 'none' } };
+            }
+            return saved;
+        }
+        let profile = loadProfile();
+        function saveProfile() {
+            try { localStorage.setItem('blobArenaProfile', JSON.stringify(profile)); } catch (e) {}
+        }
+        function isUnlocked(id) { return profile.unlocked.includes(id); }
+
+        function shadeColor(hex, percent) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            let r = (num >> 16) + percent, g = ((num >> 8) & 0xff) + percent, b = (num & 0xff) + percent;
+            r = Math.max(Math.min(255, r), 0); g = Math.max(Math.min(255, g), 0); b = Math.max(Math.min(255, b), 0);
+            return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+        }
+
+        const FLINCH_FRAMES = 180; // 3 seconds @ 60fps
+
+        // Draws the blob/slime character: rounded dome body, glossy highlight, two eyes, optional hat.
+        // When flinchTime > 0 (just got parried), it shakes and shows a frown until it wears off.
+        function drawSlime(targetCtx, x, y, color, hat, flinchTime) {
+            flinchTime = flinchTime || 0;
+            const shakeX = flinchTime > 0 ? Math.sin(flinchTime * 1.3) * 4 : 0;
+            const squish = flinchTime > 0 ? (flinchTime / FLINCH_FRAMES) * 0.12 : 0;
+            const w = 30, domeTop = -34, bottomY = 18;
+            targetCtx.save();
+            targetCtx.translate(x + shakeX, y);
+            targetCtx.scale(1 + squish, 1 - squish);
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(-w, bottomY - 8);
+            targetCtx.quadraticCurveTo(-w, domeTop, 0, domeTop - 6);
+            targetCtx.quadraticCurveTo(w, domeTop, w, bottomY - 8);
+            targetCtx.quadraticCurveTo(w, bottomY, 0, bottomY + 2);
+            targetCtx.quadraticCurveTo(-w, bottomY, -w, bottomY - 8);
+            targetCtx.closePath();
+            targetCtx.fillStyle = color;
+            targetCtx.fill();
+            targetCtx.lineWidth = 3;
+            targetCtx.strokeStyle = shadeColor(color, -50);
+            targetCtx.stroke();
+
+            // glossy highlight
+            targetCtx.beginPath();
+            targetCtx.ellipse(-w * 0.35, domeTop * 0.35, w * 0.22, w * 0.3, -0.5, 0, Math.PI * 2);
+            targetCtx.fillStyle = 'rgba(255,255,255,0.35)';
+            targetCtx.fill();
+
+            // eyes
+            targetCtx.fillStyle = 'white';
+            targetCtx.beginPath(); targetCtx.ellipse(6, -2, 5, 7, 0, 0, Math.PI * 2); targetCtx.fill();
+            targetCtx.beginPath(); targetCtx.ellipse(18, -2, 5, 7, 0, 0, Math.PI * 2); targetCtx.fill();
+            targetCtx.fillStyle = 'black';
+            targetCtx.beginPath(); targetCtx.ellipse(7, 0, 2.4, 3.4, 0, 0, Math.PI * 2); targetCtx.fill();
+            targetCtx.beginPath(); targetCtx.ellipse(19, 0, 2.4, 3.4, 0, 0, Math.PI * 2); targetCtx.fill();
+
+            // frown while flinching (a dome-shaped arc, corners down) — reverts to neutral automatically once flinchTime hits 0
+            if (flinchTime > 0) {
+                targetCtx.strokeStyle = '#5d2b00';
+                targetCtx.lineWidth = 2;
+                targetCtx.beginPath();
+                targetCtx.arc(12, 12, 7, Math.PI * 1.15, Math.PI * 1.85);
+                targetCtx.stroke();
+            }
+
+            drawHat(targetCtx, hat, domeTop - 6);
+            targetCtx.restore();
+        }
+
+        function drawHat(targetCtx, hat, topY) {
+            if (!hat || hat === 'none') return;
+            if (hat === 'party') {
+                targetCtx.beginPath();
+                targetCtx.moveTo(-10, topY + 2); targetCtx.lineTo(10, topY + 2); targetCtx.lineTo(0, topY - 22);
+                targetCtx.closePath();
+                targetCtx.fillStyle = '#e91e63'; targetCtx.fill();
+                targetCtx.beginPath(); targetCtx.arc(0, topY - 22, 4, 0, Math.PI * 2);
+                targetCtx.fillStyle = '#ffeb3b'; targetCtx.fill();
+            } else if (hat === 'crown') {
+                targetCtx.fillStyle = '#ffd700';
+                targetCtx.beginPath();
+                targetCtx.moveTo(-14, topY + 4);
+                targetCtx.lineTo(-14, topY - 10); targetCtx.lineTo(-7, topY);
+                targetCtx.lineTo(0, topY - 14); targetCtx.lineTo(7, topY);
+                targetCtx.lineTo(14, topY - 10); targetCtx.lineTo(14, topY + 4);
+                targetCtx.closePath(); targetCtx.fill();
+                targetCtx.strokeStyle = '#b8860b'; targetCtx.lineWidth = 1.5; targetCtx.stroke();
+            } else if (hat === 'halo') {
+                targetCtx.strokeStyle = '#fff59d'; targetCtx.lineWidth = 3;
+                targetCtx.beginPath(); targetCtx.ellipse(0, topY - 12, 12, 4, 0, 0, Math.PI * 2); targetCtx.stroke();
+            } else if (hat === 'tophat') {
+                targetCtx.fillStyle = '#212121';
+                targetCtx.fillRect(-12, topY - 2, 24, 4);
+                targetCtx.fillRect(-7, topY - 20, 14, 20);
+            }
+        }
+
+        // ---- Avatar screen ----
+        function openAvatarScreen() {
+            document.getElementById('avatarScreen').style.display = 'flex';
+            renderCosmeticGrids();
+            renderAvatarPreview();
+        }
+        function closeAvatarScreen() {
+            document.getElementById('avatarScreen').style.display = 'none';
+        }
+
+        // ---- Game mode selection ----
+        let gameMode = 'arena'; // 'arena' | 'soccer' | 'hideseek'
+        const MODE_LABELS = { arena: 'Mode: Arena (parries)', soccer: 'Mode: Soccer (goals)', hideseek: 'Mode: Hide & Seek (catches)' };
+
+        function openGameModeScreen() {
+            document.getElementById('gameModeScreen').style.display = 'flex';
+            document.querySelectorAll('.modeCard').forEach(el => el.classList.remove('selected'));
+            const active = document.getElementById('modeCard_' + gameMode);
+            if (active) active.classList.add('selected');
+        }
+        function closeGameModeScreen() {
+            document.getElementById('gameModeScreen').style.display = 'none';
+        }
+        function selectGameMode(mode) {
+            gameMode = mode;
+            document.getElementById('selectedModeLabel').textContent = MODE_LABELS[mode];
+            document.querySelectorAll('.modeCard').forEach(el => el.classList.remove('selected'));
+            document.getElementById('modeCard_' + mode).classList.add('selected');
+        }
+
+        function renderAvatarPreview() {
+            const c = document.getElementById('avatarPreview');
+            const actx = c.getContext('2d');
+            actx.clearRect(0, 0, c.width, c.height);
+            drawSlime(actx, c.width / 2, c.height / 2 + 20, profile.equipped.color, profile.equipped.hat);
+        }
+        function renderCosmeticGrids() {
+            const colorGrid = document.getElementById('colorGrid');
+            const hatGrid = document.getElementById('hatGrid');
+            colorGrid.innerHTML = ''; hatGrid.innerHTML = '';
+            COSMETIC_CATALOG.forEach(item => {
+                const el = document.createElement('div');
+                const unlocked = isUnlocked(item.id);
+                const equipped = (item.type === 'color' && profile.equipped.color === item.value) ||
+                                  (item.type === 'hat' && profile.equipped.hat === item.value);
+                el.className = 'cosmeticItem' + (unlocked ? '' : ' locked') + (equipped ? ' equipped' : '');
+                el.title = item.name + (unlocked ? '' : ' (locked — win matches for a chance to unlock)');
+                if (item.type === 'color') {
+                    const sw = document.createElement('div');
+                    sw.className = 'swatch';
+                    sw.style.background = item.value;
+                    el.appendChild(sw);
+                } else {
+                    const mini = document.createElement('canvas');
+                    mini.width = 50; mini.height = 50;
+                    const mctx = mini.getContext('2d');
+                    drawHat(mctx, item.value, 34);
+                    el.appendChild(mini);
+                }
+                if (unlocked) {
+                    el.onclick = () => {
+                        if (item.type === 'color') profile.equipped.color = item.value;
+                        else profile.equipped.hat = item.value;
+                        saveProfile();
+                        renderCosmeticGrids();
+                        renderAvatarPreview();
+                    };
+                }
+                (item.type === 'color' ? colorGrid : hatGrid).appendChild(el);
+            });
+        }
+
+        // ---- Booster pack (random cosmetic reward on winning a match) ----
+        function pickRandomCosmetic() {
+            const roll = Math.random();
+            let rarity;
+            if (roll < 0.05) rarity = 'legendary';
+            else if (roll < 0.20) rarity = 'epic';
+            else if (roll < 0.45) rarity = 'rare';
+            else rarity = 'common';
+            const pool = COSMETIC_CATALOG.filter(c => c.rarity === rarity);
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+        let pendingPackItem = null;
+        function startPackOpen() {
+            document.getElementById('winnerScreen').style.display = 'none';
+            document.getElementById('packScreen').style.display = 'flex';
+            document.getElementById('packCard').style.display = 'flex';
+            document.getElementById('packReveal').style.display = 'none';
+            pendingPackItem = pickRandomCosmetic();
+        }
+        function revealPack() {
+            const item = pendingPackItem;
+            if (!item) return;
+            const isNew = !isUnlocked(item.id);
+            if (isNew) { profile.unlocked.push(item.id); saveProfile(); }
+            document.getElementById('packCard').style.display = 'none';
+            document.getElementById('packReveal').style.display = 'block';
+            const preview = document.getElementById('packItemPreview');
+            preview.innerHTML = '';
+            const mini = document.createElement('canvas');
+            mini.width = 90; mini.height = 90;
+            const mctx = mini.getContext('2d');
+            if (item.type === 'color') {
+                mctx.beginPath(); mctx.arc(45, 45, 30, 0, Math.PI * 2);
+                mctx.fillStyle = item.value; mctx.fill();
+            } else {
+                drawHat(mctx, item.value, 60);
+            }
+            preview.appendChild(mini);
+            document.getElementById('packItemName').textContent = item.name + (isNew ? ' — NEW!' : ' (duplicate)');
+            const rEl = document.getElementById('packItemRarity');
+            rEl.textContent = item.rarity.toUpperCase();
+            rEl.style.color = RARITY_COLORS[item.rarity];
+            rEl.style.fontWeight = 'bold';
+        }
+        function closePackScreen() {
+            document.getElementById('packScreen').style.display = 'none';
+        }
+
+        // ================= PEERJS (direct friend-to-friend, no server needed) =================
+        let presentPlayerIds = new Set(); // ids of other players currently known to be around
+        let connections = {};
+        let otherPlayers = {}; // id -> {x,y,msg,msgTime,shieldTime,explodeTime,parryFlash,parries,name,color,hat,flinchTime}
+        let peer = null;
+        let myPeerId = null;
+
+        function setStatus(text) {
+            document.getElementById('connStatus').textContent = text;
+            document.getElementById('menuStatus').textContent = text;
+        }
+
+        function initPeerEvents(p) {
+            p.on('open', id => {
+                myPeerId = id;
+                document.getElementById('myId').textContent = id;
+            });
+            p.on('connection', conn => setupConnection(conn));
+            p.on('error', err => {
+                console.warn('Peer error:', err.type);
+                setStatus('Connection error: ' + err.type);
+            });
+        }
+
+        function createFreshPeer() {
+            if (typeof Peer === 'undefined') {
+                console.warn('PeerJS library did not load; direct friend-connect disabled.');
+                document.getElementById('myId').textContent = 'unavailable';
+                peer = null;
+                return;
+            }
+            try {
+                peer = new Peer();
+                initPeerEvents(peer);
+            } catch (err) {
+                console.warn('Failed to create Peer:', err);
+                peer = null;
+            }
+        }
+        createFreshPeer();
+
+        function setupConnection(conn) {
+            conn.on('open', () => {
+                connections[conn.peer] = conn;
+                presentPlayerIds.add(conn.peer);
+                setStatus('Connected to ' + conn.peer);
+                if (gameState === 'game' && !matchStarted) startMatchCountdown();
+            });
+            conn.on('data', data => {
+                if (data.type === 'state') otherPlayers[conn.peer] = data;
+                else if (data.type === 'chat') { if (otherPlayers[conn.peer]) otherPlayers[conn.peer].msg = data.msg; }
+                else if (data.type === 'parryHit' && data.targetId === myPeerId) { me.flinchTime = FLINCH_FRAMES; me.msg = 'Ow!'; me.msgTime = 60; }
+                else if (data.type === 'slowHit' && data.targetId === myPeerId) { me.slowTime = SLOW_FRAMES; me.msg = 'Slowed!'; me.msgTime = 60; }
+                else if (data.type === 'goalScored' && data.targetId === myPeerId) { me.goals++; me.msg = 'GOAL!'; me.msgTime = 90; updateLeaderboardUI(); }
+                else if (data.type === 'foundHider' && data.targetId === myPeerId) { me.msg = 'Found!'; me.msgTime = 90; }
+            });
+            conn.on('close', () => {
+                delete connections[conn.peer];
+                delete otherPlayers[conn.peer];
+                presentPlayerIds.delete(conn.peer);
+            });
+        }
+
+        function connectToFriend() {
+            if (!peer) { setStatus('Direct connect is unavailable right now.'); return; }
+            const targetId = document.getElementById('targetId').value.trim();
+            if (!targetId) return;
+            setStatus('Connecting to ' + targetId + '...');
+            try {
+                setupConnection(peer.connect(targetId));
+            } catch (err) {
+                console.warn('connectToFriend failed:', err);
+                setStatus('Could not connect to ' + targetId);
+            }
+        }
+
+        // ================= HOSTED SERVER (server.js, real backend you run) =================
+        let ws = null;
+        let myWsId = null;
+
+        function getDisplayName() {
+            const v = document.getElementById('displayName').value.trim();
+            return v || 'Player';
+        }
+
+        function attachWsHandlers() {
+            ws.onmessage = e => {
+                let data;
+                try { data = JSON.parse(e.data); } catch { return; }
+                if (data.type === 'id') {
+                    myWsId = data.id;
+                    document.getElementById('myId').textContent = data.id + ' (server)';
+                } else if (data.type === 'joinResult') {
+                    if (data.ok) { setStatus('Joined your friend\'s room: ' + data.room); enterGame(); }
+                    else setStatus("Couldn't find that ID — make sure your friend is already connected.");
+                } else if (data.type === 'join') {
+                    presentPlayerIds.add(data.id);
+                    if (gameState === 'game' && !matchStarted) startMatchCountdown();
+                } else if (data.type === 'state') {
+                    otherPlayers[data.id] = data;
+                    presentPlayerIds.add(data.id);
+                    if (gameState === 'game' && !matchStarted) startMatchCountdown();
+                } else if (data.type === 'chat') {
+                    if (otherPlayers[data.id]) otherPlayers[data.id].msg = data.msg;
+                } else if (data.type === 'leave') {
+                    delete otherPlayers[data.id];
+                    presentPlayerIds.delete(data.id);
+                } else if (data.type === 'parryHit' && data.targetId === myWsId) {
+                    me.flinchTime = FLINCH_FRAMES; me.msg = 'Ow!'; me.msgTime = 60;
+                } else if (data.type === 'slowHit' && data.targetId === myWsId) {
+                    me.slowTime = SLOW_FRAMES; me.msg = 'Slowed!'; me.msgTime = 60;
+                } else if (data.type === 'goalScored' && data.targetId === myWsId) {
+                    me.goals++; me.msg = 'GOAL!'; me.msgTime = 90; updateLeaderboardUI();
+                } else if (data.type === 'foundHider' && data.targetId === myWsId) {
+                    me.msg = 'Found!'; me.msgTime = 90;
+                }
+            };
+            ws.onerror = err => {
+                console.warn('WebSocket error:', err);
+                setStatus('Server connection error — check the URL and that the server is running.');
+            };
+            ws.onclose = () => {
+                setStatus('Disconnected from hosted server.');
+                ws = null;
+            };
+        }
+
+        function ensureWsConnected(url, onOpen) {
+            if (ws && ws.readyState === WebSocket.OPEN) { onOpen(); return; }
+            try {
+                ws = new WebSocket(url);
+            } catch (err) {
+                setStatus('Could not connect: ' + err.message);
+                return;
+            }
+            ws.onopen = onOpen;
+            attachWsHandlers();
+        }
+
+        function joinHostedServer(room) {
+            const url = document.getElementById('serverUrl').value.trim();
+            if (!url) { setStatus('Enter your server URL first.'); return; }
+            setStatus('Connecting to ' + url + '...');
+            ensureWsConnected(url, () => {
+                ws.send(JSON.stringify({ type: 'join', room, name: getDisplayName() }));
+                setStatus('Joined room "' + room + '"');
+                enterGame();
+            });
+        }
+
+        function joinTypedRoom() {
+            const room = document.getElementById('roomName').value.trim();
+            if (!room) { setStatus('Type a room name first.'); return; }
+            joinHostedServer(room);
+        }
+
+        function joinFriendById() {
+            const url = document.getElementById('serverUrl').value.trim();
+            const targetId = document.getElementById('friendServerId').value.trim();
+            if (!url) { setStatus('Enter your server URL first.'); return; }
+            if (!targetId) { setStatus("Enter your friend's ID first."); return; }
+            setStatus('Looking for your friend...');
+            ensureWsConnected(url, () => {
+                ws.send(JSON.stringify({ type: 'joinById', targetId, name: getDisplayName() }));
+            });
+        }
+
+        let netTick = 0;
+        function broadcastState() {
+            netTick++;
+            if (netTick % 3 !== 0) return;
+            const payload = {
+                type: 'state', x: me.x, y: me.y, msg: me.msg, msgTime: me.msgTime,
+                shieldTime: me.shieldTime, explodeTime: me.explodeTime, parryFlash: me.parryFlash,
+                parries: me.parries, flinchTime: me.flinchTime, slowTime: me.slowTime, goals: me.goals, catches: me.catches, name: getDisplayName(), color: profile.equipped.color, hat: profile.equipped.hat
+            };
+            for (const id in connections) {
+                try { if (connections[id].open) connections[id].send(payload); } catch (err) { console.warn(err); }
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try { ws.send(JSON.stringify(payload)); } catch (err) { console.warn('ws send failed:', err); }
+            }
+        }
+
+        function sendChat() {
+            me.msg = document.getElementById('chatInput').value;
+            me.msgTime = 180;
+            document.getElementById('chatInput').value = "";
+            for (const id in connections) {
+                try { if (connections[id].open) connections[id].send({ type: 'chat', msg: me.msg }); } catch (err) { console.warn(err); }
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try { ws.send(JSON.stringify({ type: 'chat', msg: me.msg })); } catch (err) { console.warn(err); }
+            }
+        }
+
+        // ================= MAP: bounds, walls & obstacles =================
+        const WORLD_MIN = -900, WORLD_MAX = 900;
+        const PLAYER_RADIUS = 32;
+
+        // Simple flat-color shapes scattered around the arena, each with an
+        // approximate collision radius so movement can't pass through them.
+        const OBSTACLES = [
+            { type: 'circle',    x: -450, y: -250, r: 45,           color: '#4fc3f7', collR: 45 },
+            { type: 'oval',      x: 350,  y: -400, rx: 50, ry: 70,  color: '#f48fb1', collR: 65 },
+            { type: 'triangle',  x: -250, y: 350,  size: 90,        color: '#e53935', collR: 55 },
+            { type: 'rectangle', x: 450,  y: 250,  w: 130, h: 75,   color: '#fdd835', collR: 75 },
+            { type: 'square',    x: -650, y: 550,  size: 75,        color: '#66bb6a', collR: 55 },
+            { type: 'diamond',   x: 650,  y: -550, size: 75,        color: '#7e57c2', collR: 60 },
+            { type: 'circle',    x: 700,  y: 450,  r: 55,           color: '#4fc3f7', collR: 55 },
+            { type: 'square',    x: -750, y: -650, size: 65,        color: '#66bb6a', collR: 48 },
+            { type: 'triangle',  x: 100,  y: -700, size: 95,        color: '#e53935', collR: 58 },
+            { type: 'oval',      x: -100, y: 100,  rx: 45, ry: 60,  color: '#f48fb1', collR: 58 },
+            { type: 'diamond',   x: -450, y: 700,  size: 80,        color: '#7e57c2', collR: 64 },
+            { type: 'rectangle', x: 0,    y: 750,  w: 150, h: 60,   color: '#fdd835', collR: 82 },
+        ];
+
+        function resolveCollisions(entity) {
+            entity.x = Math.max(WORLD_MIN + PLAYER_RADIUS, Math.min(WORLD_MAX - PLAYER_RADIUS, entity.x));
+            entity.y = Math.max(WORLD_MIN + PLAYER_RADIUS, Math.min(WORLD_MAX - PLAYER_RADIUS, entity.y));
+            if (gameMode === 'soccer') return; // soccer uses its own field, no shape obstacles
+            for (const ob of OBSTACLES) {
+                const dx = entity.x - ob.x, dy = entity.y - ob.y;
+                const dist = Math.hypot(dx, dy);
+                const minDist = PLAYER_RADIUS + ob.collR;
+                if (dist < minDist && dist > 0.001) {
+                    const push = minDist - dist;
+                    entity.x += (dx / dist) * push;
+                    entity.y += (dy / dist) * push;
+                }
+            }
+        }
+
+        function drawObstacle(o) {
+            ctx.save();
+            ctx.translate(o.x, o.y);
+            ctx.fillStyle = o.color;
+            ctx.strokeStyle = '#212121';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (o.type === 'circle') ctx.arc(0, 0, o.r, 0, Math.PI * 2);
+            else if (o.type === 'oval') ctx.ellipse(0, 0, o.rx, o.ry, 0, 0, Math.PI * 2);
+            else if (o.type === 'triangle') {
+                ctx.moveTo(0, -o.size * 0.6); ctx.lineTo(o.size * 0.6, o.size * 0.5); ctx.lineTo(-o.size * 0.6, o.size * 0.5); ctx.closePath();
+            } else if (o.type === 'rectangle') ctx.rect(-o.w / 2, -o.h / 2, o.w, o.h);
+            else if (o.type === 'square') ctx.rect(-o.size / 2, -o.size / 2, o.size, o.size);
+            else if (o.type === 'diamond') {
+                ctx.moveTo(0, -o.size); ctx.lineTo(o.size * 0.7, 0); ctx.lineTo(0, o.size); ctx.lineTo(-o.size * 0.7, 0); ctx.closePath();
+            }
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawWorldBorder() {
+            ctx.strokeStyle = '#455a64';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(WORLD_MIN, WORLD_MIN, WORLD_MAX - WORLD_MIN, WORLD_MAX - WORLD_MIN);
+        }
+
+        // ================= SOCCER MODE =================
+        // No dedicated authoritative server, so the ball is simulated by whichever
+        // player is currently closest to it ("ball authority"); everyone else just
+        // renders the latest ball position they've received. This keeps things in
+        // sync well for a couple of players; expect minor jitter with a bigger group.
+        const GOAL_HALF_WIDTH = 110;
+        const GOAL_DEPTH = 60; // nets sit just inside the field lines, not poking outside
+        let ball = { x: 0, y: 0, vx: 0, vy: 0, r: 16, lastTouchedBy: null };
+
+        function resetBall() { ball.x = 0; ball.y = 0; ball.vx = 0; ball.vy = 0; ball.lastTouchedBy = null; }
+
+        function myNetId() { return ws ? myWsId : (peer ? myPeerId : null); }
+
+        function isBallAuthority() {
+            let myDist = Math.hypot(me.x - ball.x, me.y - ball.y);
+            for (const id in otherPlayers) {
+                const p = otherPlayers[id];
+                if (Math.hypot(p.x - ball.x, p.y - ball.y) < myDist) return false;
+            }
+            return true;
+        }
+
+        function simulateBall() {
+            ball.vx *= 0.96; ball.vy *= 0.96;
+            ball.x += ball.vx; ball.y += ball.vy;
+
+            function tryPush(px, py, pvx, pvy, id) {
+                const dx = ball.x - px, dy = ball.y - py;
+                const dist = Math.hypot(dx, dy);
+                const minDist = ball.r + PLAYER_RADIUS;
+                if (dist < minDist && dist > 0.001) {
+                    const nx = dx / dist, ny = dy / dist;
+                    ball.x = px + nx * minDist; ball.y = py + ny * minDist;
+                    ball.vx = nx * 6 + (pvx || 0) * 0.5;
+                    ball.vy = ny * 6 + (pvy || 0) * 0.5;
+                    ball.lastTouchedBy = id;
+                }
+            }
+            tryPush(me.x, me.y, me.vx, me.vy, myNetId());
+            for (const id in otherPlayers) tryPush(otherPlayers[id].x, otherPlayers[id].y, 0, 0, id);
+
+            // solid walls on every side — the nets live inside the field, so no gap is needed here
+            if (ball.x - ball.r < WORLD_MIN) { ball.x = WORLD_MIN + ball.r; ball.vx *= -0.6; }
+            if (ball.x + ball.r > WORLD_MAX) { ball.x = WORLD_MAX - ball.r; ball.vx *= -0.6; }
+            if (ball.y - ball.r < WORLD_MIN) { ball.y = WORLD_MIN + ball.r; ball.vy *= -0.6; }
+            if (ball.y + ball.r > WORLD_MAX) { ball.y = WORLD_MAX - ball.r; ball.vy *= -0.6; }
+
+            // goal check: ball entered either net box (just inside the field lines)
+            if (Math.abs(ball.y) < GOAL_HALF_WIDTH) {
+                if (ball.x < WORLD_MIN + GOAL_DEPTH || ball.x > WORLD_MAX - GOAL_DEPTH) {
+                    onGoalScored(ball.lastTouchedBy);
+                    resetBall();
+                }
+            }
+        }
+
+        function onGoalScored(scorerId) {
+            if (!scorerId) return;
+            if (scorerId === myNetId()) {
+                me.goals++; me.msg = 'GOAL!'; me.msgTime = 90;
+                updateLeaderboardUI(); // reflect it immediately instead of waiting for the next frame's sync
+            } else {
+                sendTargetedEvent('goalScored', scorerId);
+            }
+        }
+
+        function drawSoccerField() {
+            ctx.fillStyle = '#66bb6a';
+            ctx.fillRect(WORLD_MIN, WORLD_MIN, WORLD_MAX - WORLD_MIN, WORLD_MAX - WORLD_MIN);
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 4;
+            ctx.strokeRect(WORLD_MIN, WORLD_MIN, WORLD_MAX - WORLD_MIN, WORLD_MAX - WORLD_MIN);
+            ctx.beginPath(); ctx.moveTo(0, WORLD_MIN); ctx.lineTo(0, WORLD_MAX); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, 90, 0, Math.PI * 2); ctx.stroke();
+            // nets — goal boxes drawn just inside the field lines, not poking outside the border
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(WORLD_MIN, -GOAL_HALF_WIDTH, GOAL_DEPTH, GOAL_HALF_WIDTH * 2);
+            ctx.fillRect(WORLD_MAX - GOAL_DEPTH, -GOAL_HALF_WIDTH, GOAL_DEPTH, GOAL_HALF_WIDTH * 2);
+            ctx.strokeStyle = '#eceff1'; ctx.lineWidth = 3;
+            ctx.strokeRect(WORLD_MIN, -GOAL_HALF_WIDTH, GOAL_DEPTH, GOAL_HALF_WIDTH * 2);
+            ctx.strokeRect(WORLD_MAX - GOAL_DEPTH, -GOAL_HALF_WIDTH, GOAL_DEPTH, GOAL_HALF_WIDTH * 2);
+            drawWorldBorder();
+            // ball
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'white'; ctx.fill(); ctx.strokeStyle = '#212121'; ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        // ================= HIDE & SEEK MODE =================
+        let myRole = null; // 'seeker' | 'hider' | null
+        let hideSeekRound = 0;
+        let caughtHiders = new Set();
+        const CATCH_RADIUS = 45;
+
+        function simpleHash(str) {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+            return h;
+        }
+
+        function assignHideSeekRoles() {
+            const myId = myNetId();
+            const allIds = Array.from(presentPlayerIds);
+            if (myId) allIds.push(myId);
+            allIds.sort();
+            if (allIds.length === 0) { myRole = null; return; }
+            const seed = allIds.join(',') + ':' + hideSeekRound;
+            const seekerId = allIds[simpleHash(seed) % allIds.length];
+            myRole = (seekerId === myId) ? 'seeker' : 'hider';
+            hideSeekRound++;
+            caughtHiders = new Set();
+            me.msg = myRole === 'seeker' ? "You're the Seeker! Find everyone!" : "You're hiding! Don't get caught!";
+            me.msgTime = 180;
+        }
+
+        function checkHideSeekCatches() {
+            if (myRole !== 'seeker') return;
+            for (const id in otherPlayers) {
+                if (caughtHiders.has(id)) continue;
+                const d = Math.hypot(me.x - otherPlayers[id].x, me.y - otherPlayers[id].y);
+                if (d < CATCH_RADIUS) {
+                    caughtHiders.add(id);
+                    me.catches++;
+                    sendTargetedEvent('foundHider', id);
+                }
+            }
+        }
+
+        // Fog-of-war overlay for the seeker: screen-space, drawn after the world transform is restored.
+        function drawSeekerFog() {
+            ctx.save();
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'destination-out';
+            const cx = canvas.width / 2, cy = canvas.height / 2;
+            const grad = ctx.createRadialGradient(cx, cy, 40, cx, cy, 160);
+            grad.addColorStop(0, 'rgba(0,0,0,1)');
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(cx, cy, 160, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        function sendTargetedEvent(type, targetId) {
+            const payload = { type, targetId };
+            if (connections[targetId] && connections[targetId].open) {
+                try { connections[targetId].send(payload); } catch (err) { console.warn(err); }
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try { ws.send(JSON.stringify(payload)); } catch (err) { console.warn(err); }
+            }
+        }
+
+        // ================= JOYSTICK =================
+
+        const joyArea = document.getElementById('joystick-area');
+        const joyThumb = document.getElementById('joystick-thumb');
+        let joyActive = false;
+        let joyDX = 0, joyDY = 0;
+        const JOY_RADIUS = 50;
+
+        function joyPointerDown(e) { joyActive = true; joyArea.setPointerCapture(e.pointerId); updateJoyFromEvent(e); }
+        function joyPointerMove(e) { if (joyActive) updateJoyFromEvent(e); }
+        function joyPointerUp() { joyActive = false; joyDX = 0; joyDY = 0; joyThumb.style.transform = 'translate(0px, 0px)'; }
+        function updateJoyFromEvent(e) {
+            const rect = joyArea.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+            let dx = e.clientX - cx, dy = e.clientY - cy;
+            const dist = Math.min(Math.hypot(dx, dy), JOY_RADIUS);
+            const angle = Math.atan2(dy, dx);
+            dx = Math.cos(angle) * dist; dy = Math.sin(angle) * dist;
+            joyDX = dx / JOY_RADIUS; joyDY = dy / JOY_RADIUS;
+            joyThumb.style.transform = `translate(${dx}px, ${dy}px)`;
+        }
+        joyArea.addEventListener('pointerdown', joyPointerDown);
+        joyArea.addEventListener('pointermove', joyPointerMove);
+        joyArea.addEventListener('pointerup', joyPointerUp);
+        joyArea.addEventListener('pointercancel', joyPointerUp);
+        joyArea.addEventListener('pointerleave', e => { if (e.buttons === 0) joyPointerUp(); });
+
+        // ================= KEYBOARD =================
+        const GAME_KEYS = ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',' ','tab'];
+        window.addEventListener('keydown', e => {
+            if (document.activeElement.tagName === 'INPUT') return;
+            const k = e.key.toLowerCase();
+            if (GAME_KEYS.includes(k)) e.preventDefault();
+            if (k === 'tab' && gameState !== 'menu') { toggleLeaderboard(); return; }
+            if (k === ' ' && !keys[' ']) { dash(); }
+            keys[k] = true;
+        });
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+        function toggleLeaderboard(force) {
+            const el = document.getElementById('leaderboard');
+            const show = force !== undefined ? force : el.style.display !== 'block';
+            el.style.display = show ? 'block' : 'none';
+        }
+
+        // ================= ABILITIES =================
+        const cooldowns = { q: 0, e: 0, p: 0 };
+        const COOLDOWN_FRAMES = 90;
+        const PARRY_HIT_RADIUS = 75;
+        const EXPLODE_HIT_RADIUS = 110;
+        const SLOW_FRAMES = 180; // 3 seconds @ 60fps
+
+        function use(k) {
+            if (document.activeElement.tagName === 'INPUT') return;
+            if (gameState === 'menu' || gameState === 'ended') return;
+            if (cooldowns[k] > 0) return;
+
+            if (k === 'q') { me.shieldTime = 120; me.msg = "Shield up!"; }
+            else if (k === 'e') {
+                me.msg = "Boom!"; me.explodeTime = 20;
+                // slow anyone caught in the blast radius
+                for (const id in otherPlayers) {
+                    const d = Math.hypot(me.x - otherPlayers[id].x, me.y - otherPlayers[id].y);
+                    if (d < EXPLODE_HIT_RADIUS) sendSlowHit(id);
+                }
+            }
+            else if (k === 'p') {
+                me.msg = "Parry!"; me.parryFlash = 15; me.parries++;
+                // find the nearest other player within range and notify them so their client flinches
+                let nearestId = null, nearestDist = PARRY_HIT_RADIUS;
+                for (const id in otherPlayers) {
+                    const d = Math.hypot(me.x - otherPlayers[id].x, me.y - otherPlayers[id].y);
+                    if (d < nearestDist) { nearestDist = d; nearestId = id; }
+                }
+                if (nearestId) sendParryHit(nearestId);
+            }
+            me.msgTime = 90;
+            cooldowns[k] = COOLDOWN_FRAMES;
+
+            if (gameState === 'tutorial' && tutorialStep === 1) { tutorialStep = 2; updateTutorialHint(); }
+        }
+
+        function sendParryHit(targetId) {
+            const payload = { type: 'parryHit', targetId };
+            if (connections[targetId] && connections[targetId].open) {
+                try { connections[targetId].send(payload); } catch (err) { console.warn(err); }
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try { ws.send(JSON.stringify(payload)); } catch (err) { console.warn(err); }
+            }
+        }
+
+        function sendSlowHit(targetId) {
+            const payload = { type: 'slowHit', targetId };
+            if (connections[targetId] && connections[targetId].open) {
+                try { connections[targetId].send(payload); } catch (err) { console.warn(err); }
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try { ws.send(JSON.stringify(payload)); } catch (err) { console.warn(err); }
+            }
+        }
+
+        // ================= DASH =================
+        let dashCooldown = 0;
+        const DASH_COOLDOWN_FRAMES = 90;
+
+        function dash() {
+            if (document.activeElement.tagName === 'INPUT') return;
+            if (gameState !== 'game' && gameState !== 'tutorial') return;
+            if (dashCooldown > 0) return;
+            let dx = joyActive ? joyDX : me.vx;
+            let dy = joyActive ? joyDY : me.vy;
+            const mag = Math.hypot(dx, dy);
+            if (mag < 0.05) { dx = 0; dy = -1; } else { dx /= mag; dy /= mag; }
+            me.vx += dx * 14;
+            me.vy += dy * 14;
+            me.msg = "Dash!";
+            me.msgTime = 40;
+            dashCooldown = DASH_COOLDOWN_FRAMES;
+        }
+
+        // ================= TUTORIAL =================
+        let tutorialStep = 0;
+        let bot = { x: 0, y: 0, angle: 0 };
+        let botHome = { x: 0, y: 0 };
+
+        function startTutorial() {
+            gameState = 'tutorial';
+            tutorialStep = 0;
+            botHome.x = me.x + 220; botHome.y = me.y;
+            bot.angle = 0;
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('tutorialHint').style.display = 'block';
+            document.getElementById('tutorialStartBtn').style.display = 'none';
+            updateTutorialHint();
+        }
+
+        function updateTutorialHint() {
+            const hint = document.getElementById('tutorialHint');
+            if (tutorialStep === 0) hint.firstChild.textContent = 'Use WASD or the joystick to walk over to the orange bot!';
+            else if (tutorialStep === 1) hint.firstChild.textContent = 'Nice! Now try an ability — tap Shield, Explode, or Parry.';
+            else if (tutorialStep === 2) {
+                hint.firstChild.textContent = "You're a natural! Hit Start Game whenever you're ready.";
+                document.getElementById('tutorialStartBtn').style.display = 'inline-block';
+            }
+        }
+
+        // ================= MATCH (2 minute timer, most parries wins) =================
+        const MATCH_SECONDS = 120;
+        let matchTimeLeft = MATCH_SECONDS;
+        let matchInterval = null;
+        let matchStarted = false;
+
+        function getModeScoreField() {
+            if (gameMode === 'soccer') return 'goals';
+            if (gameMode === 'hideseek') return 'catches';
+            return 'parries';
+        }
+        function getModeScoreLabel() {
+            if (gameMode === 'soccer') return 'Goals';
+            if (gameMode === 'hideseek') return 'Caught';
+            return 'Parries';
+        }
+
+        function enterGame() {
+            gameState = 'game';
+            me.parries = 0; me.goals = 0; me.catches = 0;
+            myRole = null;
+            matchStarted = false;
+            if (matchInterval) clearInterval(matchInterval);
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('tutorialHint').style.display = 'none';
+            document.getElementById('winnerScreen').style.display = 'none';
+            document.getElementById('matchTimer').style.display = 'block';
+            document.getElementById('lbScoreLabel').textContent = getModeScoreLabel();
+            toggleLeaderboard(true);
+            if (gameMode === 'soccer') resetBall();
+
+            if (presentPlayerIds.size > 0) {
+                startMatchCountdown();
+            } else {
+                document.getElementById('matchTimer').textContent = 'You need another slime! to start.';
+            }
+        }
+
+        function startMatchCountdown() {
+            matchStarted = true;
+            matchTimeLeft = MATCH_SECONDS;
+            updateMatchTimerUI();
+            if (gameMode === 'hideseek') assignHideSeekRoles();
+            if (matchInterval) clearInterval(matchInterval);
+            matchInterval = setInterval(tickMatchTimer, 1000);
+        }
+
+        function tickMatchTimer() {
+            if (gameState !== 'game' || !matchStarted) return;
+            matchTimeLeft--;
+            updateMatchTimerUI();
+            if (matchTimeLeft <= 0) endMatch();
+        }
+
+        function updateMatchTimerUI() {
+            const m = Math.max(0, Math.floor(matchTimeLeft / 60));
+            const s = Math.max(0, matchTimeLeft % 60);
+            document.getElementById('matchTimer').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        function endMatch() {
+            clearInterval(matchInterval);
+            gameState = 'ended';
+            document.getElementById('matchTimer').style.display = 'none';
+            const field = getModeScoreField();
+
+            const standings = [{ name: getDisplayName() + ' (You)', score: me[field], isMe: true }];
+            for (const id in otherPlayers) standings.push({ name: otherPlayers[id].name || id, score: otherPlayers[id][field] || 0, isMe: false });
+            standings.sort((a, b) => b.score - a.score);
+
+            const topScore = standings[0].score;
+            const winners = standings.filter(s => s.score === topScore);
+            const iWon = winners.some(w => w.isMe) && topScore > 0;
+
+            const noWinnerMsg = gameMode === 'soccer' ? "0-0 — nobody scored, it's a draw!"
+                : gameMode === 'hideseek' ? "Time's up — the hiders win! Nobody was found."
+                : "Nobody parried — no winner this round!";
+
+            document.getElementById('winnerTitle').textContent = topScore === 0
+                ? noWinnerMsg
+                : (winners.length > 1 ? "It's a tie!" : winners[0].name + (gameMode === 'hideseek' ? ' (the Seeker) wins!' : ' wins!'));
+            document.getElementById('winnerSubtitle').textContent = topScore > 0 ? ('With ' + topScore + ' ' + getModeScoreLabel().toLowerCase()) : '';
+            document.getElementById('openPackBtn').style.display = iWon ? 'inline-block' : 'none';
+            document.getElementById('winnerScreen').style.display = 'flex';
+        }
+
+        function rematch() {
+            document.getElementById('winnerScreen').style.display = 'none';
+            enterGame();
+        }
+        function backToMenu() {
+            clearInterval(matchInterval);
+            matchStarted = false;
+            gameState = 'menu';
+            myRole = null;
+            document.getElementById('winnerScreen').style.display = 'none';
+            document.getElementById('matchTimer').style.display = 'none';
+            toggleLeaderboard(false);
+            document.getElementById('startScreen').style.display = 'flex';
+        }
+
+        function updateLeaderboardUI() {
+            const rowsEl = document.getElementById('leaderboardRows');
+            const field = getModeScoreField();
+            const standings = [{ name: getDisplayName() + ' (You)', score: me[field] }];
+            for (const id in otherPlayers) standings.push({ name: otherPlayers[id].name || id, score: otherPlayers[id][field] || 0 });
+            standings.sort((a, b) => b.score - a.score);
+            const topScore = standings.length ? standings[0].score : 0;
+
+            rowsEl.innerHTML = '';
+            standings.forEach(s => {
+                const row = document.createElement('div');
+                row.className = 'lbRow' + (s.score === topScore && topScore > 0 ? ' leader' : '');
+                row.innerHTML = `<span>${s.name}</span><span>${s.score}</span>`;
+                rowsEl.appendChild(row);
+            });
+        }
+
+        // ================= MAIN LOOP =================
+        function loop() {
+            if (gameState === 'menu') { requestAnimationFrame(loop); return; }
+
+            if (gameState === 'game' || gameState === 'tutorial') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    const slowMult = me.slowTime > 0 ? 0.45 : 1;
+                    let speed = (keys['shift'] ? 3.0 : 1.5) * slowMult;
+                    if (keys['w'] || keys['arrowup']) me.vy -= speed;
+                    if (keys['s'] || keys['arrowdown']) me.vy += speed;
+                    if (keys['a'] || keys['arrowleft']) me.vx -= speed;
+                    if (keys['d'] || keys['arrowright']) me.vx += speed;
+                }
+                if (joyActive) {
+                    const slowMult = me.slowTime > 0 ? 0.45 : 1;
+                    me.vx += joyDX * 1.5 * slowMult; me.vy += joyDY * 1.5 * slowMult;
+                }
+                me.x += me.vx; me.y += me.vy;
+                me.vx *= 0.85; me.vy *= 0.85;
+                resolveCollisions(me);
+                for (const k in cooldowns) if (cooldowns[k] > 0) cooldowns[k]--;
+                if (dashCooldown > 0) dashCooldown--;
+                if (me.flinchTime > 0) me.flinchTime--;
+                if (me.slowTime > 0) me.slowTime--;
+            }
+
+            if (gameState === 'tutorial') {
+                bot.angle += 0.02;
+                bot.x = botHome.x + Math.cos(bot.angle) * 40;
+                bot.y = botHome.y + Math.sin(bot.angle) * 40;
+                if (tutorialStep === 0) {
+                    const d = Math.hypot(me.x - bot.x, me.y - bot.y);
+                    if (d < 80) { tutorialStep = 1; updateTutorialHint(); }
+                }
+            }
+
+            if (gameState === 'game') {
+                if (gameMode === 'soccer' && isBallAuthority()) simulateBall();
+                if (gameMode === 'hideseek') checkHideSeekCatches();
+                broadcastState();
+                updateLeaderboardUI();
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2 - me.x, canvas.height / 2 - me.y);
+
+            if (gameMode === 'soccer' && gameState === 'game') {
+                drawSoccerField();
+            } else {
+                const GRID = 50;
+                const startX = Math.max(WORLD_MIN, Math.floor((me.x - canvas.width / 2) / GRID) * GRID);
+                const startY = Math.max(WORLD_MIN, Math.floor((me.y - canvas.height / 2) / GRID) * GRID);
+                const endX = Math.min(WORLD_MAX, me.x + canvas.width / 2);
+                const endY = Math.min(WORLD_MAX, me.y + canvas.height / 2);
+                ctx.strokeStyle = '#b2ebf2';
+                ctx.lineWidth = 1;
+                for (let gx = startX; gx < endX; gx += GRID) {
+                    ctx.beginPath(); ctx.moveTo(gx, Math.max(WORLD_MIN, me.y - canvas.height / 2)); ctx.lineTo(gx, Math.min(WORLD_MAX, me.y + canvas.height / 2)); ctx.stroke();
+                }
+                for (let gy = startY; gy < endY; gy += GRID) {
+                    ctx.beginPath(); ctx.moveTo(Math.max(WORLD_MIN, me.x - canvas.width / 2), gy); ctx.lineTo(Math.min(WORLD_MAX, me.x + canvas.width / 2), gy); ctx.stroke();
+                }
+                drawWorldBorder();
+                for (const o of OBSTACLES) drawObstacle(o);
+            }
+
+            if (gameState === 'tutorial') {
+                drawSlime(ctx, bot.x, bot.y, '#ff9800', 'none', 0);
+                ctx.fillStyle = 'black'; ctx.font = '13px sans-serif';
+                ctx.fillText('Bot', bot.x - 12, bot.y - 46);
+            }
+
+            for (const id in otherPlayers) {
+                const p = otherPlayers[id];
+                drawEffects(p.x, p.y, p.shieldTime, p.explodeTime, p.parryFlash, p.slowTime);
+                drawSlime(ctx, p.x, p.y, p.color || '#66bb6a', p.hat || 'none', p.flinchTime || 0);
+                if (p.msgTime > 0) drawChatBubble(p.x, p.y, p.msg);
+            }
+
+            drawEffects(me.x, me.y, me.shieldTime, me.explodeTime, me.parryFlash, me.slowTime);
+            drawSlime(ctx, me.x, me.y, profile.equipped.color, profile.equipped.hat, me.flinchTime);
+            if (me.msgTime > 0) drawChatBubble(me.x, me.y, me.msg);
+            if (me.shieldTime > 0) me.shieldTime--;
+            if (me.explodeTime > 0) me.explodeTime--;
+            if (me.parryFlash > 0) me.parryFlash--;
+            if (me.msgTime > 0) me.msgTime--;
+
+            ctx.restore();
+            if (gameMode === 'hideseek' && myRole === 'seeker' && gameState === 'game') drawSeekerFog();
+            requestAnimationFrame(loop);
+        }
+
+        // Parry flash drawn first, then the shield ring on top — visually the shield "contains"/blocks the parry glow.
+        function drawEffects(x, y, shieldTime, explodeTime, parryFlash, slowTime) {
+            if (parryFlash > 0) {
+                ctx.fillStyle = 'rgba(255,255,0,0.6)';
+                ctx.beginPath(); ctx.arc(x, y, 34, 0, Math.PI * 2); ctx.fill();
+            }
+            if (explodeTime > 0) {
+                ctx.strokeStyle = 'rgba(255,87,34,' + (explodeTime / 20) + ')';
+                ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.arc(x, y, 30 + (20 - explodeTime) * 4, 0, Math.PI * 2); ctx.stroke();
+            }
+            if (shieldTime > 0) {
+                ctx.strokeStyle = '#00e5ff';
+                ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.arc(x, y, 42, 0, Math.PI * 2); ctx.stroke();
+            }
+            if (slowTime > 0) {
+                ctx.save();
+                ctx.strokeStyle = '#81d4fa';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath(); ctx.arc(x, y, 38, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // Hand-drawn-style speech bubble with a tail pointing down at the speaker, floating above the slime.
+        function drawChatBubble(x, y, msg) {
+            if (!msg) return;
+            ctx.save();
+            ctx.font = '13px sans-serif';
+            const padding = 10;
+            const textWidth = ctx.measureText(msg).width;
+            const bubbleW = Math.max(56, textWidth + padding * 2);
+            const bubbleH = 28;
+            const bx = x - bubbleW / 2;
+            const by = y - 88 - bubbleH;
+            const r = 10;
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bx + r, by);
+            ctx.lineTo(bx + bubbleW - r, by);
+            ctx.quadraticCurveTo(bx + bubbleW, by, bx + bubbleW, by + r);
+            ctx.lineTo(bx + bubbleW, by + bubbleH - r);
+            ctx.quadraticCurveTo(bx + bubbleW, by + bubbleH, bx + bubbleW - r, by + bubbleH);
+            ctx.lineTo(x + 7, by + bubbleH);
+            ctx.lineTo(x, by + bubbleH + 14);
+            ctx.lineTo(x - 7, by + bubbleH);
+            ctx.lineTo(bx + r, by + bubbleH);
+            ctx.quadraticCurveTo(bx, by + bubbleH, bx, by + bubbleH - r);
+            ctx.lineTo(bx, by + r);
+            ctx.quadraticCurveTo(bx, by, bx + r, by);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#222';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(msg, x, by + bubbleH / 2);
+            ctx.restore();
+        }
+
+        loop();
+    </script>
+</body>
+</html>
